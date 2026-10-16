@@ -47,9 +47,14 @@ export class ReportsService {
     });
   }
 
-  findAll() {
+    findAll() {
     return this.prisma.report.findMany({
-      include: { images: true, statusHistory: true, reporter: true },
+      include: {
+        images: true,
+        statusHistory: true,
+        reporter: { select: { id: true, name: true, email: true } },
+        assignment: { include: { cleaningTeam: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

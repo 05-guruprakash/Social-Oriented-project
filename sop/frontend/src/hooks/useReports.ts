@@ -13,6 +13,8 @@ export interface Report {
   createdAt: string
   images: { url: string }[]
   statusHistory: { status: ReportStatus; note?: string; changedAt: string }[]
+  reporter?: { id: string; name?: string; email?: string }
+  assignment?: { cleaningTeamId: string; cleaningTeam?: { id: string; name: string } } | null
 }
 
 export function useReports(scope: 'mine' | 'all' = 'mine') {

@@ -27,6 +27,14 @@ enum ReportStatus {
   REJECTED
 }
 
+enum WasteType {
+  LITTER
+  BIN_OVERFLOW
+  GARBAGE_PILE
+  DRAIN_BLOCK
+  BULK_DUMP
+}
+
 enum MessagePriority {
   NORMAL
   URGENT
@@ -66,6 +74,7 @@ model User {
   cleaningTeam       CleaningTeam?       @relation(fields: [cleaningTeamId], references: [id])
   cleaningTeamId     String?
   messages Message[]
+  acceptedAssignments Assignment[]
 }
 
 model Report {
@@ -73,6 +82,7 @@ model Report {
   description String
   latitude    Float
   longitude   Float
+  wasteType   WasteType    @default(LITTER)
   status      ReportStatus @default(PENDING)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -80,10 +90,10 @@ model Report {
   reporter   User   @relation(fields: [reporterId], references: [id])
   reporterId String
 
-  images            ReportImage[]
-  statusHistory     ReportStatusHistory[]
-  assignment        Assignment?
-  rewardTransaction RewardTransaction?
+  images             ReportImage[]
+  statusHistory      ReportStatusHistory[]
+  assignment         Assignment?
+  rewardTransactions RewardTransaction[]
 }
 
 model ReportImage {
@@ -123,8 +133,11 @@ model Assignment {
   report   Report @relation(fields: [reportId], references: [id])
   reportId String @unique
 
-  cleaningTeam   CleaningTeam @relation(fields: [cleaningTeamId], references: [id])
-  cleaningTeamId String
+  cleaningTeam   CleaningTeam? @relation(fields: [cleaningTeamId], references: [id])
+  cleaningTeamId String?
+
+  cleaner   User?   @relation(fields: [cleanerId], references: [id])
+  cleanerId String?
 }
 
 model RewardTransaction {
@@ -137,7 +150,9 @@ model RewardTransaction {
   userId String
 
   report   Report? @relation(fields: [reportId], references: [id])
-  reportId String? @unique
+  reportId String?
+
+  @@unique([reportId, userId])
 }
 
 model Notification {

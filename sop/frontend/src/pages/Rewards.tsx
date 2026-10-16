@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { motion, type Variants } from 'framer-motion'
 import { useCredits } from '../hooks/useCredits'
+import { api } from '../lib/api'
 
 const earnItems = [
   { icon: '📸', title: 'Report Waste', desc: 'Submit a valid waste report.', points: '+0' },
@@ -7,9 +9,9 @@ const earnItems = [
 ]
 
 const rewardItems = [
-  { icon: '🌱', title: 'Eco-Friendly Plant', desc: 'Get a small plant for your home.', points: '100' },
-  { icon: '🛍️', title: 'Eco Shopping Bag', desc: 'Reusable shopping bag for daily use.', points: '150' },
-  { icon: '🎁', title: 'Community Gift', desc: 'Special reward for active contributors.', points: '250' },
+  { id: 'plant', icon: '🌱', title: 'Eco-Friendly Plant', desc: 'Get a small plant for your home.', cost: 100 },
+  { id: 'bag', icon: '🛍️', title: 'Eco Shopping Bag', desc: 'Reusable shopping bag for daily use.', cost: 150 },
+  { id: 'gift', icon: '🎁', title: 'Community Gift', desc: 'Special reward for active contributors.', cost: 250 },
 ]
 
 const fadeUp: Variants = {
@@ -18,7 +20,23 @@ const fadeUp: Variants = {
 }
 
 function Rewards() {
-  const { balance, loading } = useCredits()
+  const { balance, loading, refetch } = useCredits()
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  const handleRedeem = async (id: string) => {
+    setBusyId(id)
+    setMsg(null)
+    try {
+      const res = await api.post('/rewards/redeem', { rewardId: id })
+      setMsg({ type: 'ok', text: `Redeemed ${res.data.redeemed}!` })
+      await refetch()
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e?.response?.data?.message || 'Redeem failed. Try again.' })
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   return (
     <div>
@@ -65,27 +83,39 @@ function Rewards() {
 
       <section>
         <h2 className="text-lg font-bold mb-4">Available Rewards</h2>
+        {msg && (
+          <p className={`text-sm mb-3 ${msg.type === 'ok' ? 'text-organic' : 'text-glass'}`}>{msg.text}</p>
+        )}
         <div className="grid md:grid-cols-3 gap-4">
-          {rewardItems.map((r) => (
-            <motion.div
-              key={r.title}
-              initial="hidden"
-              animate="show"
-              variants={fadeUp}
-              whileHover={{ y: -5, borderColor: '#3b82f6' }}
-              className="bg-surface border border-line rounded-xl p-6 transition-colors cursor-pointer"
-            >
-              <div className="h-28 rounded-lg bg-accent-soft flex items-center justify-center text-4xl mb-4">{r.icon}</div>
-              <h3 className="text-base font-bold mb-1.5">{r.title}</h3>
-              <p className="text-sm text-muted leading-relaxed mb-4">{r.desc}</p>
-              <div className="flex items-center justify-between pt-3 border-t border-line">
-                <span className="font-mono text-sm text-accent font-medium">{r.points} Points</span>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-ink text-paper px-4 py-1.5 rounded-md text-xs font-medium hover:bg-accent hover:text-white transition-colors">
-                  Redeem
-                </motion.button>
-              </div>
-            </motion.div>
-          ))}
+          {rewardItems.map((r) => {
+            const canAfford = balance >= r.cost
+            return (
+              <motion.div
+                key={r.id}
+                initial="hidden"
+                animate="show"
+                variants={fadeUp}
+                whileHover={{ y: -5, borderColor: '#3b82f6' }}
+                className="bg-surface border border-line rounded-xl p-6 transition-colors"
+              >
+                <div className="h-28 rounded-lg bg-accent-soft flex items-center justify-center text-4xl mb-4">{r.icon}</div>
+                <h3 className="text-base font-bold mb-1.5">{r.title}</h3>
+                <p className="text-sm text-muted leading-relaxed mb-4">{r.desc}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-line">
+                  <span className="font-mono text-sm text-accent font-medium">{r.cost} Points</span>
+                  <motion.button
+                    whileHover={canAfford ? { scale: 1.05 } : undefined}
+                    whileTap={canAfford ? { scale: 0.95 } : undefined}
+                    onClick={() => handleRedeem(r.id)}
+                    disabled={!canAfford || busyId === r.id}
+                    className="bg-ink text-paper px-4 py-1.5 rounded-md text-xs font-medium hover:bg-accent hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {busyId === r.id ? '...' : 'Redeem'}
+                  </motion.button>
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       </section>
     </div>
